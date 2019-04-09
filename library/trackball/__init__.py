@@ -1,26 +1,23 @@
 from smbus2 import i2c_msg, SMBus
 import struct
-import sys
-import time
-import os
 import RPi.GPIO as GPIO
 
-GPIO.setmode(GPIO.BCM)
 
-I2C_ADDRESS = 0x0A      #7 bit address
-I2C_ADDRESS_ALTERNATIVE = 0x0B      #7 bit address
+I2C_ADDRESS = 0x0A
+I2C_ADDRESS_ALTERNATIVE = 0x0B
 
 START_BYTE = 0x6A
 
 CMD_RESET_READ_ADDR = 0x20
 
-CMD_SET_RED_LED     = 0x30
-CMD_SET_GREEN_LED   = 0x31
-CMD_SET_BLUE_LED    = 0x32
-CMD_SET_WHITE_LED   = 0x33
-CMD_SET_ALL_LEDS    = 0x60
+CMD_SET_RED_LED = 0x30
+CMD_SET_GREEN_LED = 0x31
+CMD_SET_BLUE_LED = 0x32
+CMD_SET_WHITE_LED = 0x33
+CMD_SET_ALL_LEDS = 0x60
 
-CMD_SET_INT_OUT_EN  = 0x34
+CMD_SET_INT_OUT_EN = 0x34
+CMD_SET_I2C_ADDRESS = 0x35
 
 
 class TrackBall():
@@ -32,11 +29,23 @@ class TrackBall():
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(4, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
 
-        self.i2c_rdwr([START_BYTE, CMD_SET_ALL_LEDS, 0, 0, 0, 0])    
+        self.i2c_rdwr([START_BYTE, CMD_SET_ALL_LEDS, 0, 0, 0, 0])
 
         self.enable_interrupt()
 
+    def change_address(self, new_address):
+        """Write a new I2C address into flash."""
+        self.i2c_rdwr([START_BYTE, CMD_SET_I2C_ADDRESS, new_address & 0xff])
+        self._wait_for_flash()
+
+    def _wait_for_flash(self):
+        while self.get_interrupt():
+            pass
+        while not self.get_interrupt():
+            time.sleep(0.001)
+
     def enable_interrupt(self, interrupt=True):
+        """Enable/disable GPIO interrupt pin."""
         self.i2c_rdwr([START_BYTE, CMD_SET_INT_OUT_EN, 1 if interrupt else 0])
 
     def i2c_rdwr(self, data, length=0):
@@ -51,10 +60,12 @@ class TrackBall():
         # return [ord(c) for c in msg_r.buf]
 
     def get_interrupt(self):
+        """Get the trackball interrupt status."""
         return GPIO.input(4) == 0
 
     def set_rgbw(self, r, g, b, w):
-        self.i2c_rdwr([START_BYTE, CMD_SET_ALL_LEDS, r, g, b, w])  
+        """Set all LED brightness as RGBW."""
+        self.i2c_rdwr([START_BYTE, CMD_SET_ALL_LEDS, r, g, b, w])
 
     def set_red(self, value):
         """Set brightness of trackball red LED."""
@@ -74,12 +85,15 @@ class TrackBall():
 
     def read(self):
         """Read up, down, left, right and switch data from trackball."""
-        data = self.i2c_rdwr([START_BYTE, CMD_RESET_READ_ADDR], 10) 
+        data = self.i2c_rdwr([START_BYTE, CMD_RESET_READ_ADDR], 10)
         right, up, down, left, switch = struct.unpack(">HHHHH", bytearray(data))
         return up, down, left, right, switch
 
 
 if __name__ == "__main__":
+    import os
+    import time
+
     def exp_preserve_sign(x):
         if x < 0:
             return -(x**2)
@@ -105,7 +119,7 @@ if __name__ == "__main__":
     trackball.set_white(0)
 
     while True:
-        while not trackball.get_interrupt(): # Wait for interrupt from breakout
+        while not trackball.get_interrupt():
             time.sleep(0.001)
 
         up, down, left, right, switch = trackball.read()
@@ -125,7 +139,5 @@ if __name__ == "__main__":
             cmd = 'xte "mouseclick 1"'
             os.system(cmd)
         elif right or up or left or down:
-            cmd = 'xte "mousermove %d %d"'% ( exp_preserve_sign(right-left), exp_preserve_sign(down-up) )
+            cmd = 'xte "mousermove {} {}"'.format(exp_preserve_sign(right - left), exp_preserve_sign(down - up))
             os.system(cmd)
-
-
