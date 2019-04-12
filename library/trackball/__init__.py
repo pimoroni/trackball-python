@@ -6,19 +6,35 @@ import RPi.GPIO as GPIO
 I2C_ADDRESS = 0x0A
 I2C_ADDRESS_ALTERNATIVE = 0x0B
 
-START_BYTE = 0x6A
+CHIP_ID = 0xBA11
+VERSION = 1
 
-CMD_RESET_READ_ADDR = 0x20
+REG_LED_RED = 0x00
+REG_LED_GRN = 0x01
+REG_LED_BLU = 0x02
+REG_LED_WHT = 0x03
 
-CMD_SET_RED_LED = 0x30
-CMD_SET_GREEN_LED = 0x31
-CMD_SET_BLUE_LED = 0x32
-CMD_SET_WHITE_LED = 0x33
-CMD_SET_ALL_LEDS = 0x60
+REG_LEFT = 0x04
+REG_RIGHT = 0x04
+REG_UP = 0x06
+REG_DOWN = 0x07
+REG_SWITCH = 0x08
+MSK_SWITCH_STATE = 0b10000000
 
-CMD_SET_INT_OUT_EN = 0x34
-CMD_SET_I2C_ADDRESS = 0x35
-
+REG_USER_FLASH = 0xD0
+REG_FLASH_PAGE = 0xF0
+REG_INT = 0xF9
+MSK_INT_TRIGGERED = 0b00000001
+MSK_INT_OUT_EN = 0b00000010
+REG_CHIP_ID_L = 0xFA
+RED_CHIP_ID_H = 0xFB
+REG_VERSION = 0xFC
+REG_I2C_ADDR = 0xFD
+REG_CTRL = 0xFE
+MSK_CTRL_SLEEP = 0b00000001
+MSK_CTRL_RESET = 0b00000010
+MSK_CTRL_FREAD = 0b00000100
+MSK_CTRL_FWRITE = 0b00001000
 
 class TrackBall():
     def __init__(self, address=I2C_ADDRESS):
@@ -29,13 +45,18 @@ class TrackBall():
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(4, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
 
-        self.i2c_rdwr([START_BYTE, CMD_SET_ALL_LEDS, 0, 0, 0, 0])
+        chip_id = struct.unpack("<H", bytearray(self.i2c_rdwr([REG_CHIP_ID_L], 2)))[0]
+        print("Got chip ID: {:04X}".format(chip_id))
+        if chip_id != CHIP_ID:
+            raise RuntimeError("Invalid chip ID: 0x{:04X}, expected 0x{:04X}".format(chip_id, CHIP_ID))
+            
+        self.i2c_rdwr([REG_LED_RED, 0, 0, 0, 0])
 
         self.enable_interrupt()
 
     def change_address(self, new_address):
         """Write a new I2C address into flash."""
-        self.i2c_rdwr([START_BYTE, CMD_SET_I2C_ADDRESS, new_address & 0xff])
+        self.i2c_rdwr([REG_I2C_ADDR, new_address & 0xff])
         self._wait_for_flash()
 
     def _wait_for_flash(self):
@@ -46,18 +67,27 @@ class TrackBall():
 
     def enable_interrupt(self, interrupt=True):
         """Enable/disable GPIO interrupt pin."""
-        self.i2c_rdwr([START_BYTE, CMD_SET_INT_OUT_EN, 1 if interrupt else 0])
+        value = self.i2c_rdwr([REG_INT], 1)[0]
+        value = value & ~MSK_INT_OUT_EN
+        if interrupt:
+            value = value | MSK_INT_OUT_EN
+
+        self.i2c_rdwr([REG_INT, value])
 
     def i2c_rdwr(self, data, length=0):
-        for d in data:
-            self._i2c_bus.write_byte(self._i2c_address, d)
+        # print("Writing: {}".format(",".join(["{:02X}".format(x) for x in data])))
+        msg_w = i2c_msg.write(self._i2c_address, data)
+        self._i2c_bus.i2c_rdwr(msg_w)
+        # print("I2C Write done!")
 
-        return [self._i2c_bus.read_byte(self._i2c_address) for _ in range(length)]
+        if length > 0:
+            # print("Reading {} byte(s)".format(length))
+            msg_r = i2c_msg.read(self._i2c_address, length)
+            self._i2c_bus.i2c_rdwr(msg_r)
+            # print(list(msg_r))
+            return list(msg_r)
 
-        # msg_w = i2c_msg.write(self._i2c_address, data)
-        # msg_r = i2c_msg.read(self._i2c_address, length)
-        # self._i2c_bus.i2c_rdwr(msg_w, msg_r)
-        # return [ord(c) for c in msg_r.buf]
+        return []
 
     def get_interrupt(self):
         """Get the trackball interrupt status."""
@@ -65,29 +95,29 @@ class TrackBall():
 
     def set_rgbw(self, r, g, b, w):
         """Set all LED brightness as RGBW."""
-        self.i2c_rdwr([START_BYTE, CMD_SET_ALL_LEDS, r, g, b, w])
+        self.i2c_rdwr([REG_LED_RED, r, g, b, w])
 
     def set_red(self, value):
         """Set brightness of trackball red LED."""
-        self.i2c_rdwr([START_BYTE, CMD_SET_RED_LED, value & 0xff])
+        self.i2c_rdwr([REG_LED_RED, value & 0xff])
 
     def set_green(self, value):
         """Set brightness of trackball green LED."""
-        self.i2c_rdwr([START_BYTE, CMD_SET_GREEN_LED, value & 0xff])
+        self.i2c_rdwr([REG_LED_GRN, value & 0xff])
 
     def set_blue(self, value):
         """Set brightness of trackball blue LED."""
-        self.i2c_rdwr([START_BYTE, CMD_SET_BLUE_LED, value & 0xff])
+        self.i2c_rdwr([REG_LED_BLU, value & 0xff])
 
     def set_white(self, value):
         """Set brightness of trackball white LED."""
-        self.i2c_rdwr([START_BYTE, CMD_SET_WHITE_LED, value & 0xff])
+        self.i2c_rdwr([REG_LED_WHT, value & 0xff])
 
     def read(self):
         """Read up, down, left, right and switch data from trackball."""
-        data = self.i2c_rdwr([START_BYTE, CMD_RESET_READ_ADDR], 10)
-        right, up, down, left, switch = struct.unpack(">HHHHH", bytearray(data))
-        return up, down, left, right, switch
+        left, right, up, down, switch = self.i2c_rdwr([REG_LEFT], 5)
+        switch, switch_state = switch & ~MSK_SWITCH_STATE, (switch & MSK_SWITCH_STATE) > 0 
+        return up, down, left, right, switch, switch_state
 
 
 if __name__ == "__main__":
@@ -122,9 +152,9 @@ if __name__ == "__main__":
         while not trackball.get_interrupt():
             time.sleep(0.001)
 
-        up, down, left, right, switch = trackball.read()
+        up, down, left, right, switch, state = trackball.read()
 
-        print("right: {} up: {} down: {} left: {} switch: {}".format(right, up, down, left, switch))
+        print("right: {} up: {} down: {} left: {} switch: {} state: {}".format(right, up, down, left, switch, state))
 
         if right:
             trackball.set_rgbw(255, 0, 0, 0)
