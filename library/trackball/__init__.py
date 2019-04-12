@@ -15,7 +15,7 @@ REG_LED_BLU = 0x02
 REG_LED_WHT = 0x03
 
 REG_LEFT = 0x04
-REG_RIGHT = 0x04
+REG_RIGHT = 0x05
 REG_UP = 0x06
 REG_DOWN = 0x07
 REG_SWITCH = 0x08
@@ -36,21 +36,21 @@ MSK_CTRL_RESET = 0b00000010
 MSK_CTRL_FREAD = 0b00000100
 MSK_CTRL_FWRITE = 0b00001000
 
+
 class TrackBall():
-    def __init__(self, address=I2C_ADDRESS):
+    def __init__(self, address=I2C_ADDRESS, interrupt_pin=None):
         self._i2c_address = address
         self._i2c_bus = SMBus(1)
-
-        GPIO.setwarnings(False)
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(4, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
+        self._interrupt_pin = interrupt_pin
 
         chip_id = struct.unpack("<H", bytearray(self.i2c_rdwr([REG_CHIP_ID_L], 2)))[0]
-        print("Got chip ID: {:04X}".format(chip_id))
         if chip_id != CHIP_ID:
             raise RuntimeError("Invalid chip ID: 0x{:04X}, expected 0x{:04X}".format(chip_id, CHIP_ID))
-            
-        self.i2c_rdwr([REG_LED_RED, 0, 0, 0, 0])
+
+        if self._interrupt_pin is not None:
+            GPIO.setwarnings(False)
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(self._interrupt_pin, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
 
         self.enable_interrupt()
 
@@ -75,23 +75,25 @@ class TrackBall():
         self.i2c_rdwr([REG_INT, value])
 
     def i2c_rdwr(self, data, length=0):
-        # print("Writing: {}".format(",".join(["{:02X}".format(x) for x in data])))
+        """Write and optionally read I2C data."""
         msg_w = i2c_msg.write(self._i2c_address, data)
         self._i2c_bus.i2c_rdwr(msg_w)
-        # print("I2C Write done!")
 
         if length > 0:
-            # print("Reading {} byte(s)".format(length))
+            time.sleep(0.02)
             msg_r = i2c_msg.read(self._i2c_address, length)
             self._i2c_bus.i2c_rdwr(msg_r)
-            # print(list(msg_r))
             return list(msg_r)
 
         return []
 
     def get_interrupt(self):
         """Get the trackball interrupt status."""
-        return GPIO.input(4) == 0
+        if self._interrupt_pin is not None:
+            return GPIO.input(self._interrupt_pin) == 0
+        else:
+            value = self.i2c_rdwr([REG_INT], 1)[0]
+            return value & MSK_INT_TRIGGERED
 
     def set_rgbw(self, r, g, b, w):
         """Set all LED brightness as RGBW."""
@@ -116,7 +118,7 @@ class TrackBall():
     def read(self):
         """Read up, down, left, right and switch data from trackball."""
         left, right, up, down, switch = self.i2c_rdwr([REG_LEFT], 5)
-        switch, switch_state = switch & ~MSK_SWITCH_STATE, (switch & MSK_SWITCH_STATE) > 0 
+        switch, switch_state = switch & ~MSK_SWITCH_STATE, (switch & MSK_SWITCH_STATE) > 0
         return up, down, left, right, switch, switch_state
 
 
@@ -130,7 +132,7 @@ if __name__ == "__main__":
         else:
             return x**2
 
-    trackball = TrackBall()
+    trackball = TrackBall(interrupt_pin=4)
 
     trackball.set_red(255)
     time.sleep(0.2)
@@ -148,13 +150,15 @@ if __name__ == "__main__":
     time.sleep(0.2)
     trackball.set_white(0)
 
+    use_xte = os.system('which xte') == 0
+
     while True:
         while not trackball.get_interrupt():
             time.sleep(0.001)
 
         up, down, left, right, switch, state = trackball.read()
 
-        print("right: {} up: {} down: {} left: {} switch: {} state: {}".format(right, up, down, left, switch, state))
+        print("r: {:02d} u: {:02d} d: {:02d} l: {:02d} switch: {:03d} state: {}".format(right, up, down, left, switch, state))
 
         if right:
             trackball.set_rgbw(255, 0, 0, 0)
@@ -165,9 +169,12 @@ if __name__ == "__main__":
         if left:
             trackball.set_rgbw(0, 0, 0, 255)
 
-        if switch:
-            cmd = 'xte "mouseclick 1"'
-            os.system(cmd)
-        elif right or up or left or down:
-            cmd = 'xte "mousermove {} {}"'.format(exp_preserve_sign(right - left), exp_preserve_sign(down - up))
-            os.system(cmd)
+        if use_xte:
+            if switch:
+                cmd = 'xte "mouseclick 1"'
+                os.system(cmd)
+            elif right or up or left or down:
+                cmd = 'xte "mousermove {} {}"'.format(exp_preserve_sign(right - left), exp_preserve_sign(down - up))
+                os.system(cmd)
+
+        time.sleep(0.0001)
