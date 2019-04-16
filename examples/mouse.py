@@ -1,67 +1,40 @@
 #!/usr/bin/env python
 import time
-import math
-from evdev import UInput, ecodes as e
+import os
 from trackball import TrackBall
 
-print("""mouse.py - Use the Trackball as a system mouse.
+print("""Trackball: Mouse
 
-You *must*:
-
-    sudo modprobe uinput
-    sudo cp 10-trackball.rules /etc/udev/rules.d/
-    sudo udevadm control --reload-rules
-
-And run this script as root with:
-
-    sudo ./mouse.py
-
-For this to work.
+Use the trackball as a mouse in Raspbian, with right-click
+when the switch is pressed.
 
 Press Ctrl+C to exit!
-
 """)
 
+def exp_preserve_sign(x):
+    if x < 0:
+        return -(x**2)
+    else:
+        return x**2
+
 trackball = TrackBall(interrupt_pin=4)
+trackball.set_rgbw(0, 0, 0, 0)
 
-MAX_X = 255
-MAX_Y = 255
+# Check for xte (used to control mouse)
+use_xte = os.system('which xte') == 0
 
-cap = {
-    e.EV_KEY: [e.BTN_LEFT, e.BTN_RIGHT],
-    e.EV_REL: [
-        e.REL_X,
-        e.REL_Y
-    ]
-}
+while True:
+    up, down, left, right, switch, state = trackball.read()
 
-ui = UInput(cap, name='Pimoroni Trackball', bustype=e.BUS_USB)
+    # Send movements and clicks to xte
+    if use_xte:
+        if switch:
+            cmd = 'xte "mouseclick 1"'
+            os.system(cmd)
+        elif right or up or left or down:
+            cmd = 'xte "mousermove {} {}"'.format(exp_preserve_sign(right - left), exp_preserve_sign(down - up))
+            os.system(cmd)
+    else:
+        print('xte not found')
 
-x = 0
-y = 0
-
-try:
-    while True:
-        while not trackball.get_interrupt():
-            time.sleep(0.001)
-
-        up, down, left, right, switch, state = trackball.read()
-
-        x = right - left
-        y = down - up
-
-        x = math.copysign(x**2, x)
-        y = math.copysign(y**2, y)
-
-        x = int(x)
-        y = int(y)
-
-        # print("s: {} x: {:+03x}, y: {:+03x}".format(state, x, y))
-
-        ui.write(e.EV_KEY, e.BTN_LEFT, state)
-        ui.write(e.EV_REL, e.REL_X, x)
-        ui.write(e.EV_REL, e.REL_Y, y)
-        ui.syn()
-
-except KeyboardInterrupt:
-    pass
+    time.sleep(0.0001)
