@@ -9,6 +9,9 @@ print("""Trackball: Colour Control
 Use the trackball and switch to control the hue and
 brightness of the trackball's RGBW LEDs.
 
+Scroll up to increase brightness and left/right
+to change hue. Click to turn on/off.
+
 Press Ctrl+C to exit!
 """)
 

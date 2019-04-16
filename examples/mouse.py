@@ -11,12 +11,6 @@ when the switch is pressed.
 Press Ctrl+C to exit!
 """)
 
-def exp_preserve_sign(x):
-    if x < 0:
-        return -(x**2)
-    else:
-        return x**2
-
 trackball = TrackBall(interrupt_pin=4)
 trackball.set_rgbw(0, 0, 0, 0)
 
@@ -32,7 +26,11 @@ while True:
             cmd = 'xte "mouseclick 1"'
             os.system(cmd)
         elif right or up or left or down:
-            cmd = 'xte "mousermove {} {}"'.format(exp_preserve_sign(right - left), exp_preserve_sign(down - up))
+            x = right - left
+            x = math.copysign(x**2, x)
+            y = down - up
+            y = math.copysign(y**2, y)
+            cmd = 'xte "mousermove {} {}"'.format(x, y)
             os.system(cmd)
     else:
         print('xte not found')
