@@ -1,0 +1,1 @@
+SUBSYSTEM=="input", ATTRS{name}=="Pimoroni Trackball", ENV{ID_INPUT_MOUSE}="1"
