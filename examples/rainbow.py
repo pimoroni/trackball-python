@@ -16,11 +16,9 @@ trackball = TrackBall(interrupt_pin=4)
 while True:
     h = int(time.time() * 100) % 360 / 360.0
 
-    # Calculate RGB vals and mix in white
+    # Calculate RGB vals
     r, g, b = [int(c * 255) for c in colorsys.hsv_to_rgb(h, 1.0, 1.0)]
-    minimum = min(r,g,b)
-    w = minimum
-    r,g,b = r-minimum, g-minimum, b-minimum
+    w = 0
 
     # Set LEDs
     trackball.set_rgbw(r, g, b, w)

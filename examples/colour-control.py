@@ -54,11 +54,9 @@ while True:
     if toggled:
         v = 0
 
-    # Calculate RGB vals and mix in white
+    # Calculate RGB vals
+    w = 0
     r, g, b = [int(c * 255) for c in colorsys.hsv_to_rgb(h, 1.0, v)]
-    minimum = min(r,g,b)
-    w = minimum
-    r,g,b = r-minimum, g-minimum, b-minimum
 
     # Set LEDs
     trackball.set_rgbw(r, g, b, w)
