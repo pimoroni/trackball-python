@@ -1,4 +1,5 @@
 from smbus2 import i2c_msg, SMBus
+import time
 import struct
 import RPi.GPIO as GPIO
 
@@ -124,7 +125,6 @@ class TrackBall():
 
 if __name__ == "__main__":
     import os
-    import time
 
     def exp_preserve_sign(x):
         if x < 0:
