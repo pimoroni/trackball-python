@@ -39,9 +39,9 @@ MSK_CTRL_FWRITE = 0b00001000
 
 
 class TrackBall():
-    def __init__(self, address=I2C_ADDRESS, interrupt_pin=None):
+    def __init__(self, address=I2C_ADDRESS, i2c_bus=1, interrupt_pin=None):
         self._i2c_address = address
-        self._i2c_bus = SMBus(1)
+        self._i2c_bus = SMBus(i2c_bus)
         self._interrupt_pin = interrupt_pin
 
         chip_id = struct.unpack("<H", bytearray(self.i2c_rdwr([REG_CHIP_ID_L], 2)))[0]
