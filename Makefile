@@ -42,3 +42,6 @@ python-dist: python-clean python-wheels python-sdist
 
 python-deploy: python-dist
 	twine upload library/dist/*
+
+python-deploy-test: python-dist
+	twine upload --repository-url https://test.pypi.org/legacy/ library/dist/*
