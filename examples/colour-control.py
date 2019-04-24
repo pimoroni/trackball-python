@@ -3,6 +3,7 @@
 import time
 import colorsys
 from trackball import TrackBall
+import atexit
 
 print("""Trackball: Colour Control
 
@@ -16,6 +17,12 @@ Press Ctrl+C to exit!
 """)
 
 trackball = TrackBall(interrupt_pin=4)
+
+
+@atexit.register
+def clear_trackball():
+    trackball.set_rgbw(0, 0, 0, 0)
+
 
 x = 0
 y = 0
