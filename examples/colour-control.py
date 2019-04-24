@@ -39,7 +39,7 @@ while True:
     x -= left
 
     # Clamp to min of 0 and max of 100
-    x = max(0, min(x, 100))
+    x %= 100 
     y = max(0, min(y, 100))
 
     # Calculate hue and brightness
