@@ -4,6 +4,8 @@ import struct
 import RPi.GPIO as GPIO
 
 
+__version__ = '0.0.1'
+
 I2C_ADDRESS = 0x0A
 I2C_ADDRESS_ALTERNATIVE = 0x0B
 
