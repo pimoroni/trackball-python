@@ -14,7 +14,7 @@ class MockSMBus2():
 
         if type(msg) == I2CMsgRead:
             if self.reg == [0xFA]:
-                msg.set('\x11\xBA')  # Return CHIP ID
+                msg.set([0x11, 0xba])  # Return CHIP ID
             else:
                 msg.set([0 for _ in range(msg.length)])
 
