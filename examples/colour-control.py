@@ -25,7 +25,7 @@ def clear_trackball():
 
 
 x = 0
-y = 0
+y = 50.0
 
 toggled = False
 
@@ -35,8 +35,8 @@ while True:
     # Update x and y vals based on movement
     y += up
     y -= down
-    x += right
-    x -= left
+    x += right / 10.0
+    x -= left / 10.0
 
     # Clamp to min of 0 and max of 100
     x %= 100 
