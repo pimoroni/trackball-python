@@ -4,7 +4,15 @@
 
 Use the trackball as a virtual uinput mouse. Must be run as root.
 
-Requirements:
+This example is recommended if you want to use trackball as a mouse in Raspbian Desktop, to set it up just run:
+
+```
+sudo ./install-service.sh
+```
+
+You can then use `systemctl` as normal to stop and start the service.
+
+Manual install requirements:
 
 ```
 sudo apt install python-evdev
