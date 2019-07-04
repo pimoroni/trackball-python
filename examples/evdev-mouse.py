@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import time
 import math
+import os
 from evdev import UInput, ecodes as e
 from trackball import TrackBall
 
@@ -21,6 +22,8 @@ For this to work.
 Press Ctrl+C to exit!
 
 """)
+
+os.system('modprobe uninput')
 
 trackball = TrackBall(interrupt_pin=4)
 
