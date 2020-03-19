@@ -41,10 +41,11 @@ MSK_CTRL_FWRITE = 0b00001000
 
 
 class TrackBall():
-    def __init__(self, address=I2C_ADDRESS, i2c_bus=1, interrupt_pin=None):
+    def __init__(self, address=I2C_ADDRESS, i2c_bus=1, interrupt_pin=None, timeout=5):
         self._i2c_address = address
         self._i2c_bus = SMBus(i2c_bus)
         self._interrupt_pin = interrupt_pin
+        self._timeout = timeout
 
         chip_id = struct.unpack("<H", bytearray(self.i2c_rdwr([REG_CHIP_ID_L], 2)))[0]
         if chip_id != CHIP_ID:
@@ -63,9 +64,16 @@ class TrackBall():
         self._wait_for_flash()
 
     def _wait_for_flash(self):
+        t_start = time.time()
         while self.get_interrupt():
-            pass
+            if time.time() - t_start > self._timeout:
+                raise RuntimeError("Timed out waiting for interrupt!")
+            time.sleep(0.001)
+
+        t_start = time.time()
         while not self.get_interrupt():
+            if time.time() - t_start > self._timeout:
+                raise RuntimeError("Timed out waiting for interrupt!")
             time.sleep(0.001)
 
     def enable_interrupt(self, interrupt=True):
@@ -123,60 +131,3 @@ class TrackBall():
         left, right, up, down, switch = self.i2c_rdwr([REG_LEFT], 5)
         switch, switch_state = switch & ~MSK_SWITCH_STATE, (switch & MSK_SWITCH_STATE) > 0
         return up, down, left, right, switch, switch_state
-
-
-if __name__ == "__main__":
-    import os
-
-    def exp_preserve_sign(x):
-        if x < 0:
-            return -(x**2)
-        else:
-            return x**2
-
-    trackball = TrackBall(interrupt_pin=4)
-
-    trackball.set_red(255)
-    time.sleep(0.2)
-    trackball.set_red(0)
-
-    trackball.set_green(255)
-    time.sleep(0.2)
-    trackball.set_green(0)
-
-    trackball.set_blue(255)
-    time.sleep(0.2)
-    trackball.set_blue(0)
-
-    trackball.set_white(255)
-    time.sleep(0.2)
-    trackball.set_white(0)
-
-    use_xte = os.system('which xte') == 0
-
-    while True:
-        while not trackball.get_interrupt():
-            time.sleep(0.001)
-
-        up, down, left, right, switch, state = trackball.read()
-
-        print("r: {:02d} u: {:02d} d: {:02d} l: {:02d} switch: {:03d} state: {}".format(right, up, down, left, switch, state))
-
-        if right:
-            trackball.set_rgbw(255, 0, 0, 0)
-        if up:
-            trackball.set_rgbw(0, 255, 0, 0)
-        if down:
-            trackball.set_rgbw(0, 0, 255, 0)
-        if left:
-            trackball.set_rgbw(0, 0, 0, 255)
-
-        if use_xte:
-            if switch:
-                cmd = 'xte "mouseclick 1"'
-                os.system(cmd)
-            elif right or up or left or down:
-                cmd = 'xte "mousermove {} {}"'.format(exp_preserve_sign(right - left), exp_preserve_sign(down - up))
-                os.system(cmd)
-
-        time.sleep(0.0001)
