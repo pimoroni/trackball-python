@@ -23,7 +23,7 @@ Press Ctrl+C to exit!
 
 """)
 
-os.system('modprobe uninput')
+os.system('modprobe uinput')
 
 trackball = TrackBall(interrupt_pin=4)
 
