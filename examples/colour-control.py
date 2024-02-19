@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
-import time
-import colorsys
-from trackball import TrackBall
 import atexit
+import colorsys
+import time
+
+from trackball import TrackBall
 
 print("""Trackball: Colour Control
 

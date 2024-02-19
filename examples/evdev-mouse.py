@@ -1,8 +1,11 @@
 #!/usr/bin/env python
-import time
 import math
 import os
-from evdev import UInput, ecodes as e
+import time
+
+from evdev import UInput
+from evdev import ecodes as e
+
 from trackball import TrackBall
 
 print("""evdev-mouse.py - Use the Trackball as a system mouse.

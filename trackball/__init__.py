@@ -1,8 +1,8 @@
-from smbus2 import i2c_msg, SMBus
-import time
 import struct
-import RPi.GPIO as GPIO
+import time
 
+import RPi.GPIO as GPIO
+from smbus2 import SMBus, i2c_msg
 
 __version__ = '0.0.1'
 

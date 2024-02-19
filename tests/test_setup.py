@@ -1,5 +1,6 @@
-import pytest
 import itertools
+
+import pytest
 
 
 def test_setup(GPIO, smbus2, trackball):

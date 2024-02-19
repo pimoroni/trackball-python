@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import time
+
 from trackball import TrackBall
 
 print("""Trackball: Read All

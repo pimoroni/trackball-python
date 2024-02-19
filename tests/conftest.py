@@ -1,7 +1,7 @@
 import sys
+
 import mock
 import pytest
-
 
 CHIP_ID_PRESENT = [0x11, 0xba]
 CHIP_ID_INVALID = [0, 0]

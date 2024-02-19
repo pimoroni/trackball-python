@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-import time
 import colorsys
+import time
+
 from trackball import TrackBall
 
 print("""Trackball: Rainbow
