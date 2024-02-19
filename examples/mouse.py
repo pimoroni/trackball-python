@@ -17,7 +17,7 @@ trackball = TrackBall(interrupt_pin=4)
 trackball.set_rgbw(0, 0, 0, 0)
 
 # Check for xte (used to control mouse)
-use_xte = os.system('which xte') == 0
+use_xte = os.system("which xte") == 0
 
 if use_xte == 0:
     raise RuntimeError("xte not found. Did you sudo apt install xautomation?")
@@ -34,7 +34,7 @@ while True:
         x = math.copysign(x**2, x)
         y = down - up
         y = math.copysign(y**2, y)
-        cmd = 'xte "mousermove {} {}"'.format(int(x), int(y))
+        cmd = f'xte "mousermove {x:.0f} {y:.0f}"'
         os.system(cmd)
 
     time.sleep(0.0001)

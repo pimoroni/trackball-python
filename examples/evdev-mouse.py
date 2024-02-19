@@ -26,7 +26,7 @@ Press Ctrl+C to exit!
 
 """)
 
-os.system('modprobe uinput')
+os.system("modprobe uinput")
 
 trackball = TrackBall(interrupt_pin=4)
 
@@ -41,7 +41,7 @@ cap = {
     ]
 }
 
-ui = UInput(cap, name='Pimoroni Trackball', bustype=e.BUS_USB)
+ui = UInput(cap, name="Pimoroni Trackball", bustype=e.BUS_USB)
 
 x = 0
 y = 0
