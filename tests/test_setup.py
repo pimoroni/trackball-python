@@ -10,16 +10,16 @@ def test_setup(GPIO, smbus2, trackball):
 
 def test_setup_gpio_no_interrupt(GPIO, smbus2, trackball):
     # Interrupt pin always reads 1
-    GPIO.input.return_value = 1
     device = trackball.TrackBall(timeout=0.1, interrupt_pin=16)
+    device._gpio.get_value.return_value = trackball.Value.ACTIVE
     with pytest.raises(RuntimeError):
         device.change_address(0x77)
 
 
 def test_setup_gpio_interrupt(GPIO, smbus2, trackball):
     # Interrupt pin cycles between 0 and 1
-    GPIO.input.side_effect = itertools.cycle([0, 1])
     device = trackball.TrackBall(timeout=0.1, interrupt_pin=16)
+    device._gpio.get_value.side_effect = itertools.cycle([trackball.Value.INACTIVE, trackball.Value.ACTIVE])
     device.change_address(0x77)
 
 
@@ -43,10 +43,8 @@ def test_change_address(GPIO, smbus2, trackball):
 def test_setup_with_interrupt(GPIO, smbus2, trackball):
     device = trackball.TrackBall(interrupt_pin=16)
 
-    GPIO.setwarnings.assert_called_once_with(False)
-    GPIO.setmode.assert_called_once_with(GPIO.BCM)
-    GPIO.setup.assert_called_once_with(16, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
-    del device
+    assert device._interrupt_pin is not None
+    assert device._gpio is not None
 
 
 def test_leds(GPIO, smbus2, trackball):
