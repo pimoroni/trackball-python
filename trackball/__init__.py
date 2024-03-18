@@ -58,7 +58,7 @@ class TrackBall:
             gpiochip = gpiodevice.find_chip_by_platform()
             self._interrupt_pin = gpiochip.line_offset_from_id(self._interrupt_pin)
             self._gpio = gpiochip.request_lines(consumer="trackball", config={
-                self._interrupt_pin: gpiod.LineSettings(direction=Direction.IN, bias=Bias.DISABLED, output_value=Value.INACTIVE)
+                self._interrupt_pin: gpiod.LineSettings(direction=Direction.INPUT, bias=Bias.DISABLED, output_value=Value.INACTIVE)
             })
 
         self.enable_interrupt()
