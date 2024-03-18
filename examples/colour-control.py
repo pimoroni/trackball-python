@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
-import time
-import colorsys
-from trackball import TrackBall
 import atexit
+import colorsys
+import time
+
+from trackball import TrackBall
 
 print("""Trackball: Colour Control
 
@@ -39,7 +40,7 @@ while True:
     x -= left / 10.0
 
     # Clamp to min of 0 and max of 100
-    x %= 100 
+    x %= 100
     y = max(0, min(y, 100))
 
     # Calculate hue and brightness

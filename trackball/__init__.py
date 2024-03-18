@@ -1,10 +1,12 @@
-from smbus2 import i2c_msg, SMBus
-import time
 import struct
-import RPi.GPIO as GPIO
+import time
 
+import gpiod
+import gpiodevice
+from gpiod.line import Bias, Direction, Value
+from smbus2 import SMBus, i2c_msg
 
-__version__ = '0.0.1'
+__version__ = "0.0.1"
 
 I2C_ADDRESS = 0x0A
 I2C_ADDRESS_ALTERNATIVE = 0x0B
@@ -40,27 +42,30 @@ MSK_CTRL_FREAD = 0b00000100
 MSK_CTRL_FWRITE = 0b00001000
 
 
-class TrackBall():
+class TrackBall:
     def __init__(self, address=I2C_ADDRESS, i2c_bus=1, interrupt_pin=None, timeout=5):
         self._i2c_address = address
         self._i2c_bus = SMBus(i2c_bus)
         self._interrupt_pin = interrupt_pin
         self._timeout = timeout
+        self._gpio = None
 
         chip_id = struct.unpack("<H", bytearray(self.i2c_rdwr([REG_CHIP_ID_L], 2)))[0]
         if chip_id != CHIP_ID:
-            raise RuntimeError("Invalid chip ID: 0x{:04X}, expected 0x{:04X}".format(chip_id, CHIP_ID))
+            raise RuntimeError(f"Invalid chip ID: 0x{chip_id:04X}, expected 0x{CHIP_ID:04X}")
 
         if self._interrupt_pin is not None:
-            GPIO.setwarnings(False)
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setup(self._interrupt_pin, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
+            gpiochip = gpiodevice.find_chip_by_platform()
+            self._interrupt_pin = gpiochip.line_offset_from_id(self._interrupt_pin)
+            self._gpio = gpiochip.request_lines(consumer="trackball", config={
+                self._interrupt_pin: gpiod.LineSettings(direction=Direction.INPUT, bias=Bias.DISABLED, output_value=Value.INACTIVE)
+            })
 
         self.enable_interrupt()
 
     def change_address(self, new_address):
         """Write a new I2C address into flash."""
-        self.i2c_rdwr([REG_I2C_ADDR, new_address & 0xff])
+        self.i2c_rdwr([REG_I2C_ADDR, new_address & 0xFF])
         self._wait_for_flash()
 
     def _wait_for_flash(self):
@@ -101,7 +106,7 @@ class TrackBall():
     def get_interrupt(self):
         """Get the trackball interrupt status."""
         if self._interrupt_pin is not None:
-            return GPIO.input(self._interrupt_pin) == 0
+            return self._gpio.get_value(self._interrupt_pin) == Value.ACTIVE
         else:
             value = self.i2c_rdwr([REG_INT], 1)[0]
             return value & MSK_INT_TRIGGERED
@@ -112,19 +117,19 @@ class TrackBall():
 
     def set_red(self, value):
         """Set brightness of trackball red LED."""
-        self.i2c_rdwr([REG_LED_RED, value & 0xff])
+        self.i2c_rdwr([REG_LED_RED, value & 0xFF])
 
     def set_green(self, value):
         """Set brightness of trackball green LED."""
-        self.i2c_rdwr([REG_LED_GRN, value & 0xff])
+        self.i2c_rdwr([REG_LED_GRN, value & 0xFF])
 
     def set_blue(self, value):
         """Set brightness of trackball blue LED."""
-        self.i2c_rdwr([REG_LED_BLU, value & 0xff])
+        self.i2c_rdwr([REG_LED_BLU, value & 0xFF])
 
     def set_white(self, value):
         """Set brightness of trackball white LED."""
-        self.i2c_rdwr([REG_LED_WHT, value & 0xff])
+        self.i2c_rdwr([REG_LED_WHT, value & 0xFF])
 
     def read(self):
         """Read up, down, left, right and switch data from trackball."""
